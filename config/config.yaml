@@ -1,0 +1,15 @@
+paths:
+  raw_base: data/raw            
+  staging_dir: data/staging
+  metadata_dir: data/metadata   
+  log_dir: logs
+
+settings:
+  checksum_algorithm: sha256
+  log_level: INFO
+
+datasets:
+  - name: google_reviews
+    kaggle_id: hassaanmustafavi/google-play-app-reviews-dataset
+  - name: ios_dataset  
+    kaggle_id: crawlfeeds/app-store-reviews-dataset

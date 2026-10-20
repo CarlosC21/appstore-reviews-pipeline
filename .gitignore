@@ -1,0 +1,17 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Credentials (never commit)
+kaggle.json
+access_token
+.env
+
+# Pipeline data and logs
+data/
+logs/
+raw/
