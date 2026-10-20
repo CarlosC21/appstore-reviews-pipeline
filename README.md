@@ -35,3 +35,6 @@ A data engineering project that ingests app review data from Kaggle, processes i
 - **Extracted files are hashed, not the zip.** Zip files embed timestamps and compression details, so identical data can produce different zip hashes.
 - **Immutable snapshots.** Nothing in `raw` is ever overwritten. Each observed version of the data is kept, and a second snapshot on the same day is possible if the data changes between runs.
 - **Failures are isolated and visible.** One dataset failing does not stop the others. The run summary reports it, and the script exits with code 1.
+
+Wiki for Deployment Documentation
+- https://github.com/CarlosC21/appstore-reviews-pipeline/wiki
