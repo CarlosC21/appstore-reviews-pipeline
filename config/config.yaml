@@ -1,7 +1,7 @@
 paths:
-  raw_base: data/raw            
+  raw_base: data/raw
   staging_dir: data/staging
-  metadata_dir: data/metadata   
+  metadata_dir: data/metadata
   log_dir: logs
 
 settings:
@@ -11,5 +11,5 @@ settings:
 datasets:
   - name: google_reviews
     kaggle_id: hassaanmustafavi/google-play-app-reviews-dataset
-  - name: ios_dataset  
+  - name: ios_dataset
     kaggle_id: crawlfeeds/app-store-reviews-dataset
