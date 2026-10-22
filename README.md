@@ -52,6 +52,7 @@ Setup, configuration, output layout, and troubleshooting are in the Runbook -
 ## Stage 2: Process Data using Spark Jobs
 
 <img width="1865" height="472" alt="image" src="https://github.com/user-attachments/assets/d5dcffba-16c8-47e0-8338-cddc424854a6" />
+
 ### Design decisions
 
 <img width="679" height="741" alt="image" src="https://github.com/user-attachments/assets/2f76be76-1102-47c2-8828-ca0e5166f8bf" />
