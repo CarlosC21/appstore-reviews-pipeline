@@ -2,18 +2,13 @@
 
 A data engineering project that ingests app review data from Kaggle, processes it with Spark, and loads it into external tables.
 
-| Stage                              | Status  |
-| ---------------------------------- | ------- |
-| 1. Ingest: download data from APIs | Done    |
-| 2. Process: Spark jobs             | Planned |
-| 3. Load: external tables           | Planned |
+<img width="616" height="179" alt="image" src="https://github.com/user-attachments/assets/9f55c00d-f7a3-4be0-a50f-7919940fad2d" />
+
 
 ## Datasets
 
-| Name             | Kaggle ID                                          | Format |
-| ---------------- | -------------------------------------------------- | ------ |
-| `google_reviews` | `hassaanmustafavi/google-play-app-reviews-dataset` | CSV    |
-| `ios_dataset`    | `crawlfeeds/app-store-reviews-dataset`             | JSON   |
+<img width="680" height="107" alt="image" src="https://github.com/user-attachments/assets/2c181035-a816-4eaf-afac-010f31ba2af8" />
+
 
 ## Stage 1: Ingest
 
@@ -39,7 +34,8 @@ python src/ingest/download_kaggle.py
 
 A successful run ends with a summary such as `{'google_reviews': 'new', 'ios_dataset': 'new'}`. Rerunning with unchanged source data reports `unchanged` and creates no new snapshot. The script exits with code 1 if any dataset fails.
 
-Setup, configuration, output layout, and troubleshooting are in the Runbook (wiki).
+Setup, configuration, output layout, and troubleshooting are in the Runbook - 
+- https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Runbook
 
 ### Design decisions
 
@@ -52,3 +48,13 @@ Setup, configuration, output layout, and troubleshooting are in the Runbook (wik
 - **Failures are isolated and logged once.** One dataset failing does not stop the others. Each traceback is logged at a single point, and the run summary reports every result.
 - **UTC everywhere.** Snapshot folders, metadata records, and log files all use UTC, so timestamps line up across artifacts.
 - **Config over code.** Datasets, paths, hash algorithm, and log level live in `config.yaml`. Adding a dataset needs no code change.
+
+## Stage 2: Process Data using Spark Jobs
+
+<img width="1865" height="472" alt="image" src="https://github.com/user-attachments/assets/d5dcffba-16c8-47e0-8338-cddc424854a6" />
+
+### Data Quality Issues
+<img width="817" height="296" alt="image" src="https://github.com/user-attachments/assets/5a44b5ee-30ad-48d1-899d-b8abbe093586" />
+
+### Model Decision
+Nothing to join, so UNION both sources into one review table with a platform column. Fields that exist on one side only (thumbs_up, app_version, is edited, app_id) stay null on the other side.
