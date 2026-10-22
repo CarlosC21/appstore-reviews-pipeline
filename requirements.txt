@@ -18,6 +18,8 @@ nbformat==5.11.1
 packaging==26.3
 platformdirs==4.13.5
 protobuf==7.36.2
+py4j==0.10.9.9
+pyspark==4.2.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.4
 python-slugify==9.1.3
