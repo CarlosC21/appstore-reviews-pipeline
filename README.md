@@ -56,6 +56,6 @@ Setup, configuration, output layout, and troubleshooting are in the Runbook -
 ### Data Quality Issues
 <img width="817" height="296" alt="image" src="https://github.com/user-attachments/assets/5a44b5ee-30ad-48d1-899d-b8abbe093586" />
 
+### Model Decision
 
-<img width="669" height="352" alt="image" src="https://github.com/user-attachments/assets/80a9bb5b-7abe-42c8-b7d3-9b8cd87dbb6d" />
-<img width="670" height="114" alt="image" src="https://github.com/user-attachments/assets/bbef96e1-1bb0-41df-baba-e653250f4a69" />
+- **Nothing to join, so UNION both sources into one review table with a platform column. Fields that exist on one side only (thumbs_up, app_version, is edited, app_id) stay null on the other side.
