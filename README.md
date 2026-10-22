@@ -34,7 +34,8 @@ python src/ingest/download_kaggle.py
 
 A successful run ends with a summary such as `{'google_reviews': 'new', 'ios_dataset': 'new'}`. Rerunning with unchanged source data reports `unchanged` and creates no new snapshot. The script exits with code 1 if any dataset fails.
 
-Setup, configuration, output layout, and troubleshooting are in the Runbook (wiki).
+Setup, configuration, output layout, and troubleshooting are in the Runbook - 
+- https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Runbook
 
 ### Design decisions
 
