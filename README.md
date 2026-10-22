@@ -8,6 +8,9 @@ A data engineering project that ingests app review data from Kaggle, processes i
 | 2. Process: Spark jobs             | Planned |
 | 3. Load: external tables           | Planned |
 
+<img width="616" height="179" alt="image" src="https://github.com/user-attachments/assets/9f55c00d-f7a3-4be0-a50f-7919940fad2d" />
+
+
 ## Datasets
 
 | Name             | Kaggle ID                                          | Format |
