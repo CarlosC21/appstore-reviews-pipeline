@@ -58,4 +58,4 @@ Setup, configuration, output layout, and troubleshooting are in the Runbook -
 
 ### Model Decision
 
-- **Nothing to join, so UNION both sources into one review table with a platform column. Fields that exist on one side only (thumbs_up, app_version, is edited, app_id) stay null on the other side.
+- Nothing to join, so UNION both sources into one review table with a platform column. Fields that exist on one side only (thumbs_up, app_version, is edited, app_id) stay null on the other side.
