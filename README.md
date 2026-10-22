@@ -7,10 +7,8 @@ A data engineering project that ingests app review data from Kaggle, processes i
 
 ## Datasets
 
-| Name             | Kaggle ID                                          | Format |
-| ---------------- | -------------------------------------------------- | ------ |
-| `google_reviews` | `hassaanmustafavi/google-play-app-reviews-dataset` | CSV    |
-| `ios_dataset`    | `crawlfeeds/app-store-reviews-dataset`             | JSON   |
+<img width="680" height="107" alt="image" src="https://github.com/user-attachments/assets/2c181035-a816-4eaf-afac-010f31ba2af8" />
+
 
 ## Stage 1: Ingest
 
