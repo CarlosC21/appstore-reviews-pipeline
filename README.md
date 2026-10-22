@@ -48,3 +48,7 @@ Setup, configuration, output layout, and troubleshooting are in the Runbook -
 - **Failures are isolated and logged once.** One dataset failing does not stop the others. Each traceback is logged at a single point, and the run summary reports every result.
 - **UTC everywhere.** Snapshot folders, metadata records, and log files all use UTC, so timestamps line up across artifacts.
 - **Config over code.** Datasets, paths, hash algorithm, and log level live in `config.yaml`. Adding a dataset needs no code change.
+
+## Stage 2: Process Data using Spark Jobs
+
+<img width="743" height="606" alt="image" src="https://github.com/user-attachments/assets/a9516590-7842-40c5-bdcf-cf8cae99a51b" />
