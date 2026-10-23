@@ -3,6 +3,12 @@ paths:
   staging_dir: data/staging
   metadata_dir: data/metadata
   log_dir: logs
+  processed_base: data/processed
+  run_records_dir: data/processing_runs
+
+transform:
+  google_app_name: "<real app name from the Kaggle page>"
+  partition_columns: [platform, review_year]
 
 settings:
   checksum_algorithm: sha256
