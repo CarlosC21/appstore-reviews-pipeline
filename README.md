@@ -4,61 +4,40 @@ A data engineering project that ingests app review data from Kaggle, processes i
 
 <img width="616" height="179" alt="image" src="https://github.com/user-attachments/assets/9f55c00d-f7a3-4be0-a50f-7919940fad2d" />
 
-
 ## Datasets
 
 <img width="680" height="107" alt="image" src="https://github.com/user-attachments/assets/2c181035-a816-4eaf-afac-010f31ba2af8" />
 
+## Pipeline
 
-## Stage 1: Ingest
+**Stage 1: Ingest.** Downloads each dataset through the Kaggle API into a staging folder, hashes the files, and commits a new snapshot to `data/raw/` only when the content changed. Every run writes a metadata record.
 
-`src/ingest/download_kaggle.py` downloads each dataset listed in `config/config.yaml` through the Kaggle API, stores a snapshot only when the data has changed, and writes a metadata record for every run.
+**Stage 2: Process.** A Spark job reads the latest raw snapshots with explicit schemas, cleans and unions both sources into one review table, runs six quality checks, and writes partitioned Parquet to `data/processed/reviews/`. Result: 161 Google Play + 10,585 App Store reviews (3 duplicates removed) = **10,746 rows**.
 
-### How it works
+<img width="1865" height="472" alt="image" src="https://github.com/user-attachments/assets/d5dcffba-16c8-47e0-8338-cddc424854a6" />
 
-1. Authenticate with the Kaggle API once per run.
-2. Download each dataset into `data/staging/<name>/` (never directly into `raw`).
-3. Compute a SHA-256 hash for every extracted file.
-4. Compare against the last stored snapshot.
-5. **Changed or first run:** move the staged files into `data/raw/<name>/<UTC timestamp>/`, then write a `new` metadata record.
-6. **Unchanged:** discard the staged files and write an `unchanged` metadata record that points to the matching snapshot.
+**Stage 3: Load.** Planned: external tables over the Parquet output.
 
-### Quick start
+### Highlights
 
-Requires Python 3.10+ and a Kaggle API token (see the Runbook for credential setup).
+- **Idempotent.** Reruns never duplicate data. Ingest compares content checksums, and the Spark job skips snapshots it has already processed.
+- **Crash-safe.** Both stages write to a staging area and publish with a rename, so a failure never leaves a half-written table.
+- **Quality gate.** A failed check stops the job before anything is published and returns exit code 1.
+- **Traceable.** Every output row records the raw snapshot it came from, and every run leaves a metadata or run record.
+
+## Run it
 
 ```
 pip install -r requirements.txt
 python src/ingest/download_kaggle.py
+python src/transform/spark_job.py
 ```
 
-A successful run ends with a summary such as `{'google_reviews': 'new', 'ios_dataset': 'new'}`. Rerunning with unchanged source data reports `unchanged` and creates no new snapshot. The script exits with code 1 if any dataset fails.
+Credentials, Java and Windows setup, configuration, and troubleshooting are in the [Runbook](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Runbook). How each stage works and why it is designed this way is in [Design & Decisions](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Design-Decisions).
 
-Setup, configuration, output layout, and troubleshooting are in the Runbook - 
-- https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Runbook
+## Future improvements
 
-### Design decisions
-
-- **Staging, then atomic rename.** A crash mid-download never leaves a half-written folder in `raw`.
-- **Move data first, then write the record.** The metadata record is the source of truth. A snapshot folder without a record is treated as uncommitted.
-- **Checksums over timestamps.** Hashing file contents detects real changes, so re-downloading identical data never creates a duplicate snapshot.
-- **Extracted files are hashed, not the zip.** Zip files embed timestamps and compression details, so identical data can produce different zip hashes.
-- **Files tracked by relative path.** Nested datasets are supported, and same-named files in different folders do not collide.
-- **Immutable snapshots.** Nothing in `raw` is ever overwritten. Each observed version is kept, and a second snapshot on the same day is possible if the data changes.
-- **Failures are isolated and logged once.** One dataset failing does not stop the others. Each traceback is logged at a single point, and the run summary reports every result.
-- **UTC everywhere.** Snapshot folders, metadata records, and log files all use UTC, so timestamps line up across artifacts.
-- **Config over code.** Datasets, paths, hash algorithm, and log level live in `config.yaml`. Adding a dataset needs no code change.
-
-## Stage 2: Process Data using Spark Jobs
-
-<img width="1865" height="472" alt="image" src="https://github.com/user-attachments/assets/d5dcffba-16c8-47e0-8338-cddc424854a6" />
-
-`src/transform/spark_job.py` reads the latest committed raw snapshots, cleans and combines them, runs quality checks, and writes one partitioned Parquet table to `data/processed/reviews/`.
-
-**Result:** 161 Google Play reviews + 10,585 App Store reviews (3 exact duplicates removed) = **10,746 rows**.
-
-### Data Quality Issues
-<img width="817" height="296" alt="image" src="https://github.com/user-attachments/assets/5a44b5ee-30ad-48d1-899d-b8abbe093586" />
-
-### Model Decision
-Nothing to join, so the job **unions** both sources into one review table with a `platform` column. The key is `(platform, review_id)`. Fields that exist on one side only (`thumbs_up`, `app_version`, `is_edited`, `app_id`) stay null on the other side.
+- Retry with exponential backoff for transient network errors in ingest
+- Lock file to prevent overlapping runs
+- Shared module for config, logging, and atomic writes (currently duplicated between stages)
+- Scheduled daily runs with alerting on a non-zero exit code
