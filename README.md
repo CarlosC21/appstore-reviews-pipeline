@@ -34,10 +34,3 @@ python src/transform/spark_job.py
 ```
 
 Credentials, Java and Windows setup, configuration, and troubleshooting are in the [Runbook](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Runbook). How each stage works and why it is designed this way is in [Design & Decisions](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Design-Decisions).
-
-## Future improvements
-
-- Retry with exponential backoff for transient network errors in ingest
-- Lock file to prevent overlapping runs
-- Shared module for config, logging, and atomic writes (currently duplicated between stages)
-- Scheduled daily runs with alerting on a non-zero exit code
