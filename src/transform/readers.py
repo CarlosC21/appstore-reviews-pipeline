@@ -30,7 +30,7 @@ def read_google(spark: SparkSession, path: Path) -> DataFrame:
     return (
         spark.read
         .schema(GOOGLE_SCHEMA)
-        .option("header", True)           # the first line is the header row
+        .option("header", True)           
         .option("enforceSchema", False)   # check header names against the schema instead of ignoring them
         .option("multiLine", True)        # a quoted review may contain line breaks
         .option("quote", '"')
@@ -46,7 +46,7 @@ def read_ios(spark: SparkSession, path: Path) -> DataFrame:
     return (
         spark.read
         .schema(IOS_SCHEMA)
-        .option("multiLine", True)        # the file is one JSON array, not one object per line
+        .option("multiLine", True)        # the file is one JSON array
         .option("encoding", "UTF-8")
         .option("mode", "FAILFAST")
         .json(str(path))

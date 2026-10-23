@@ -1,10 +1,5 @@
-"""Spark job: read the latest raw snapshots, clean and combine them, check quality, write Parquet.
-
-Run from the project root:  python src/transform/spark_job.py
-
-Flow: resolve snapshots -> skip if already processed -> read -> clean -> conform -> combine
-      -> quality checks -> write to a staging folder -> verify -> publish -> write a run record
-Exit code 0 on success or skip, 1 on any failure (nothing is published on failure).
+"""
+Spark job: read the latest raw snapshots, clean and combine them, check quality, write Parquet.
 """
 
 import argparse
@@ -63,7 +58,7 @@ def setup_logging(log_dir: Path, level: str) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / f"transform_{datetime.now(timezone.utc).date().isoformat()}.log"
 
-    logging.Formatter.converter = time.gmtime   # format all timestamps in UTC
+    logging.Formatter.converter = time.gmtime   
     logging.basicConfig(
         level=getattr(logging, level.upper()),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -147,8 +142,8 @@ def write_parquet(df: DataFrame, staging_dir: Path, partition_columns: list[str]
     (
         df.repartition(*partition_columns)    # same partition key -> same task -> one file per partition folder
         .write.mode("overwrite")
-        .partitionBy(*partition_columns)      # folders like platform=app_store/review_year=2019/
-        .parquet(str(staging_dir))            # snappy compression is the default
+        .partitionBy(*partition_columns)      
+        .parquet(str(staging_dir))            # snappy default
     )
 
 
@@ -162,7 +157,7 @@ def publish(staging_dir: Path, final_dir: Path) -> None:
         shutil.rmtree(previous_dir)
     if final_dir.exists():
         os.rename(final_dir, previous_dir)
-    os.rename(staging_dir, final_dir)          # a rename within one volume is atomic
+    os.rename(staging_dir, final_dir)          
     if previous_dir.exists():
         shutil.rmtree(previous_dir)
 
@@ -206,7 +201,7 @@ def run(spark: SparkSession, config: dict, force: bool = False) -> None:
     ios_dir = latest_snapshot_dir("ios_dataset")
     inputs = {"google_reviews": google_dir.name, "ios_dataset": ios_dir.name}
 
-    # Idempotency: the output is a pure function of the input snapshots
+
     previous = latest_success_record(paths["run_records_dir"])
     if not force and previous and previous["inputs"] == inputs and final_dir.exists():
         logger.info("Inputs unchanged since run %s: nothing to do", previous["run_timestamp"])
@@ -233,10 +228,10 @@ def run(spark: SparkSession, config: dict, force: bool = False) -> None:
     try:
         output_rows = combined.count()
         results = run_checks(combined, google_rows, ios_rows, parse_failures)
-        assert_all_passed(results)   # raises, and nothing is published, if any check fails
+        assert_all_passed(results)   
 
         write_parquet(combined, staging_dir, partition_columns)
-        written_rows = spark.read.parquet(str(staging_dir)).count()   # round trip before publishing
+        written_rows = spark.read.parquet(str(staging_dir)).count()   
         if written_rows != output_rows:
             raise RuntimeError(f"Read-back mismatch: wrote {output_rows} rows, read {written_rows}")
 
@@ -244,7 +239,7 @@ def run(spark: SparkSession, config: dict, force: bool = False) -> None:
     finally:
         combined.unpersist()
 
-    # Data first, then the record. A crash in between just means the next run redoes the work.
+
     record = {
         "run_timestamp": run_timestamp,
         "status": "success",

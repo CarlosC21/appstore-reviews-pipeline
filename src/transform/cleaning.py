@@ -1,8 +1,5 @@
-"""Cleaning and conforming: turn the two raw sources into one review table.
-
-clean_*    rename to snake_case, parse timestamps, cast types, flatten, deduplicate (per source)
-conform_*  add platform, lineage, and derived columns (per source)
-combine    union both sources into one table with a fixed column order
+"""
+Cleaning and conforming: turn the two raw sources into one review table.
 """
 
 from datetime import datetime
@@ -11,15 +8,11 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
 
 # Spark datetime patterns: https://spark.apache.org/docs/latest/sql-ref-datetime-pattern.html
-# A single letter (M, d, H, m, s) accepts 1 or 2 digits. A doubled letter (MM, dd, HH) expects
-# exactly 2, so a strict pattern doubles as a format check: if the source changes, parsing fails.
-# The first three sources carry no timezone, so values are read in the session timezone (UTC).
-GOOGLE_TS_FORMAT = "M/d/yyyy H:mm"                    # 9/3/2024 0:23 and 5/21/2024 23:50
-IOS_REVIEW_TS_FORMAT = "yyyy/M/d, H:m:s"              # 2017/9/8, 11:58:17 (minutes and seconds are not padded)
-IOS_CRAWLED_TS_FORMAT = "MM/dd/yyyy, HH:mm:ss"        # 02/21/2021, 10:15:43 (always padded, so strict on purpose)
-IOS_RESPONSE_TS_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX"   # 2018-09-28T22:47:19Z (XXX reads the zone from the data)
+GOOGLE_TS_FORMAT = "M/d/yyyy H:mm"                    
+IOS_REVIEW_TS_FORMAT = "yyyy/M/d, H:m:s"              
+IOS_CRAWLED_TS_FORMAT = "MM/dd/yyyy, HH:mm:ss"        
+IOS_RESPONSE_TS_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX"   
 
-# Final column order of the processed review table.
 # The natural key is (platform, review_id): review IDs are only unique within a platform.
 TARGET_COLUMNS = [
     "platform",
@@ -107,7 +100,7 @@ def clean_ios(df: DataFrame) -> DataFrame:
         F.col("title").alias("review_title"),
         F.col("review").alias("review_text"),
         F.col("rating"),
-        # A cast (not "== 'true'") so an unexpected value fails loudly instead of becoming false
+        
         F.col("isEdited").cast("boolean").alias("is_edited"),
         parse_ts("date", IOS_REVIEW_TS_FORMAT).alias("review_ts"),
         parse_ts("crawled_at", IOS_CRAWLED_TS_FORMAT).alias("crawled_ts"),
@@ -118,7 +111,7 @@ def clean_ios(df: DataFrame) -> DataFrame:
         parse_ts("developerResponse.modified", IOS_RESPONSE_TS_FORMAT).alias("developer_response_ts"),
     )
     # The 3 duplicates are exact copies, so which one is kept does not matter.
-    # dropDuplicates is a wide transformation: it shuffles data across partitions.
+
     return cleaned.dropDuplicates(["review_id"])
 
 
@@ -135,8 +128,7 @@ def _add_derived_columns(df: DataFrame) -> DataFrame:
 
 
 def conform_google(df: DataFrame, app_name: str, source_snapshot: str) -> DataFrame:
-    """Add platform, app name, lineage, and derived columns to the cleaned Google reviews.
-
+    """
     The Google file does not say which app it covers, so the name comes from config.yaml.
     """
     return _add_derived_columns(
@@ -164,5 +156,5 @@ def combine(google: DataFrame, ios: DataFrame, processed_at: datetime) -> DataFr
     app_version and language_code for the App Store).
     """
     combined = google.unionByName(ios, allowMissingColumns=True)
-    # One timestamp for the whole run, set in Python so every row carries the same value
+    
     return combined.withColumn("processed_at", F.lit(processed_at)).select(*TARGET_COLUMNS)
