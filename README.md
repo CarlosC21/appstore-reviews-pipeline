@@ -16,13 +16,14 @@ A data engineering project that ingests app review data from Kaggle, processes i
 
 <img width="1865" height="472" alt="image" src="https://github.com/user-attachments/assets/d5dcffba-16c8-47e0-8338-cddc424854a6" />
 
-**Stage 3: Load.** Planned: external tables over the Parquet output.
+**Stage 3: Load.** Defines an external Parquet table, `reviews_db.reviews`, over the Stage 2 output in a Hive metastore, partitioned by `platform` and `review_year`. It checks the table against the Stage 2 run record (table type, row counts, registered partitions) and creates three views for the business questions. Dropping the table leaves the 22 Parquet files in place.
 
 ### Highlights
 
-- **Idempotent.** Reruns never duplicate data. Ingest compares content checksums, and the Spark job skips snapshots it has already processed.
-- **Crash-safe.** Both stages write to a staging area and publish with a rename, so a failure never leaves a half-written table.
+- **Idempotent.** Reruns never duplicate data. Ingest compares content checksums, the Spark job skips snapshots it has already processed, and the table DDL can be rerun safely.
+- **Crash-safe.** Ingest and the Spark job write to a staging area and publish with a rename, so a failure never leaves a half-written table.
 - **Quality gate.** A failed check stops the job before anything is published and returns exit code 1.
+- **External by design.** The table is a definition over files the pipeline owns, and it is validated against the pipeline's own run records.
 - **Traceable.** Every output row records the raw snapshot it came from, and every run leaves a metadata or run record.
 
 ## Run it
@@ -31,6 +32,7 @@ A data engineering project that ingests app review data from Kaggle, processes i
 pip install -r requirements.txt
 python src/ingest/download_kaggle.py
 python src/transform/spark_job.py
+python src/load/load_tables.py
 ```
 
 Credentials, Java and Windows setup, configuration, and troubleshooting are in the [Runbook](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Runbook). How each stage works and why it is designed this way is in [Design & Decisions](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Design-Decisions).
