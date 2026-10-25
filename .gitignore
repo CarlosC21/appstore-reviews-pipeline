@@ -17,3 +17,5 @@ logs/
 raw/
 
 notebooks/
+
+derby.log

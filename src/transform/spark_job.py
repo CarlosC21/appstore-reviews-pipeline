@@ -1,5 +1,5 @@
 """
-Spark job: read the latest raw snapshots, clean and combine them, check quality, write Parquet.
+Read the latest raw snapshots, clean and combine them, check quality, write Parquet.
 """
 
 import argparse
@@ -29,6 +29,10 @@ from spark_session import get_spark
 
 logger = logging.getLogger(__name__)
 
+# Dataset names used in config.yaml
+GOOGLE_DATASET = "google_reviews"
+IOS_DATASET = "ios_dataset"
+
 
 # --- Config and logging ------------------------------------------------------------------------
 
@@ -44,7 +48,7 @@ def validate_config(config: dict) -> None:
     """Fail early, with a clear message, if a setting this job needs is missing."""
     transform = config.get("transform") or {}
     app_name = transform.get("google_app_name", "")
-    if not app_name or app_name.upper().startswith("TODO"):
+    if not app_name or app_name.upper().startswith("TODO") or app_name.startswith("<"):
         raise ValueError("Set transform.google_app_name in config.yaml (the Google file does not name its app)")
     if not transform.get("partition_columns"):
         raise ValueError("Set transform.partition_columns in config.yaml")
@@ -53,12 +57,11 @@ def validate_config(config: dict) -> None:
             raise ValueError(f"Missing paths.{key} in config.yaml")
 
 
-def setup_logging(log_dir: Path, level: str) -> None:
-    """Log to the console and to a daily UTC log file."""
+def setup_logging(log_dir: Path, level: str, name: str = "transform") -> None:
+    """Log to the console and to a daily UTC log file named <name>_<date>.log."""
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / f"transform_{datetime.now(timezone.utc).date().isoformat()}.log"
-
-    logging.Formatter.converter = time.gmtime   
+    log_file = log_dir / f"{name}_{datetime.now(timezone.utc).date().isoformat()}.log"
+    logging.Formatter.converter = time.gmtime
     logging.basicConfig(
         level=getattr(logging, level.upper()),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -83,11 +86,7 @@ def _result(name: str, passed: bool, detail: str) -> dict:
 
 
 def run_checks(df: DataFrame, google_rows: int, ios_rows: int, parse_failures: int) -> list[dict]:
-    """Run every check and return the results. Nothing is raised here.
-
-    All table-level metrics come from ONE aggregation, so Spark scans the data once
-    instead of once per check.
-    """
+    """Run every check and return the results. Nothing is raised here."""
     stats = df.agg(
         F.count("*").alias("rows"),
         F.sum(F.col("platform").isNull().cast("int")).alias("null_platform"),
@@ -140,10 +139,10 @@ def write_parquet(df: DataFrame, staging_dir: Path, partition_columns: list[str]
     if staging_dir.exists():
         shutil.rmtree(staging_dir)
     (
-        df.repartition(*partition_columns)    # same partition key -> same task -> one file per partition folder
+        df.repartition(*partition_columns)    
         .write.mode("overwrite")
-        .partitionBy(*partition_columns)      
-        .parquet(str(staging_dir))            # snappy default
+        .partitionBy(*partition_columns)
+        .parquet(str(staging_dir))           
     )
 
 
@@ -157,13 +156,29 @@ def publish(staging_dir: Path, final_dir: Path) -> None:
         shutil.rmtree(previous_dir)
     if final_dir.exists():
         os.rename(final_dir, previous_dir)
-    os.rename(staging_dir, final_dir)          
+    os.rename(staging_dir, final_dir)
     if previous_dir.exists():
         shutil.rmtree(previous_dir)
 
 
+def write_and_publish(
+    spark: SparkSession,
+    df: DataFrame,
+    staging_dir: Path,
+    final_dir: Path,
+    partition_columns: list[str],
+    expected_rows: int,
+) -> None:
+    """Write Parquet to staging, verify it by reading it back, then publish it."""
+    write_parquet(df, staging_dir, partition_columns)
+    written_rows = spark.read.parquet(str(staging_dir)).count()
+    if written_rows != expected_rows:
+        raise RuntimeError(f"Read-back mismatch: wrote {expected_rows} rows, read {written_rows}")
+    publish(staging_dir, final_dir)
+
+
 def write_run_record(run_dir: Path, record: dict) -> Path:
-    """Write one run record atomically (temp file, fsync, rename)."""
+    """Write one run record atomically"""
     run_dir.mkdir(parents=True, exist_ok=True)
     final_path = run_dir / f"{record['run_timestamp']}.json"
     tmp_path = final_path.with_suffix(".json.tmp")
@@ -190,18 +205,48 @@ def latest_success_record(run_dir: Path) -> dict | None:
 
 # --- The job -----------------------------------------------------------------------------------
 
+def build_table(
+    spark: SparkSession,
+    google_dir: Path,
+    ios_dir: Path,
+    app_name: str,
+    processed_at: datetime,
+) -> tuple[DataFrame, dict]:
+    """Read, clean, conform, and combine both sources."""
+    raw_google = read_google(spark, google_dir / GOOGLE_FILE)
+    raw_ios = read_ios(spark, ios_dir / IOS_FILE)
+    parse_failures = total_parse_failures(raw_google, raw_ios)
+
+    google = clean_google(raw_google)
+    ios = clean_ios(raw_ios)
+    counts = {
+        "google": google.count(),
+        "ios_raw": raw_ios.count(),
+        "ios_after_dedup": ios.count(),
+        "parse_failures": parse_failures,
+    }
+
+    combined = combine(
+        conform_google(google, app_name, google_dir.name),
+        conform_ios(ios, ios_dir.name),
+        processed_at,
+    )
+    return combined, counts
+
+
 def run(spark: SparkSession, config: dict, force: bool = False) -> None:
+    """Resolve inputs, skip if already processed, build and check the table, publish it, record the run."""
     paths = config["paths"]
     app_name = config["transform"]["google_app_name"]
     partition_columns = config["transform"]["partition_columns"]
     final_dir = paths["processed_base"] / "reviews"
     staging_dir = paths["processed_base"] / "_staging" / "reviews"
 
-    google_dir = latest_snapshot_dir("google_reviews")
-    ios_dir = latest_snapshot_dir("ios_dataset")
-    inputs = {"google_reviews": google_dir.name, "ios_dataset": ios_dir.name}
+    google_dir = latest_snapshot_dir(GOOGLE_DATASET)
+    ios_dir = latest_snapshot_dir(IOS_DATASET)
+    inputs = {GOOGLE_DATASET: google_dir.name, IOS_DATASET: ios_dir.name}
 
-
+    # Idempotency: the output is a pure function of the input snapshots
     previous = latest_success_record(paths["run_records_dir"])
     if not force and previous and previous["inputs"] == inputs and final_dir.exists():
         logger.info("Inputs unchanged since run %s: nothing to do", previous["run_timestamp"])
@@ -211,31 +256,19 @@ def run(spark: SparkSession, config: dict, force: bool = False) -> None:
     processed_at = datetime.now(timezone.utc)
     logger.info("Processing snapshots %s", inputs)
 
-    raw_google = read_google(spark, google_dir / GOOGLE_FILE)
-    raw_ios = read_ios(spark, ios_dir / IOS_FILE)
-    parse_failures = total_parse_failures(raw_google, raw_ios)
+    combined, counts = build_table(spark, google_dir, ios_dir, app_name, processed_at)
+    duplicates_removed = counts["ios_raw"] - counts["ios_after_dedup"]
+    logger.info(
+        "Rows in: google=%d, app_store=%d (%d duplicates removed)",
+        counts["google"], counts["ios_after_dedup"], duplicates_removed,
+    )
 
-    google = clean_google(raw_google)
-    ios = clean_ios(raw_ios)
-    google_rows, ios_rows, ios_raw_rows = google.count(), ios.count(), raw_ios.count()
-
-    combined = combine(
-        conform_google(google, app_name, google_dir.name),
-        conform_ios(ios, ios_dir.name),
-        processed_at,
-    ).cache()  # used by the checks, the write, and the row counts, so compute it once
-
+    combined = combined.cache()
     try:
         output_rows = combined.count()
-        results = run_checks(combined, google_rows, ios_rows, parse_failures)
-        assert_all_passed(results)   
-
-        write_parquet(combined, staging_dir, partition_columns)
-        written_rows = spark.read.parquet(str(staging_dir)).count()   
-        if written_rows != output_rows:
-            raise RuntimeError(f"Read-back mismatch: wrote {output_rows} rows, read {written_rows}")
-
-        publish(staging_dir, final_dir)
+        results = run_checks(combined, counts["google"], counts["ios_after_dedup"], counts["parse_failures"])
+        assert_all_passed(results)
+        write_and_publish(spark, combined, staging_dir, final_dir, partition_columns, output_rows)
     finally:
         combined.unpersist()
 
@@ -245,10 +278,10 @@ def run(spark: SparkSession, config: dict, force: bool = False) -> None:
         "status": "success",
         "inputs": inputs,
         "rows": {
-            "google": google_rows,
-            "ios_raw": ios_raw_rows,
-            "ios_after_dedup": ios_rows,
-            "ios_duplicates_removed": ios_raw_rows - ios_rows,
+            "google": counts["google"],
+            "ios_raw": counts["ios_raw"],
+            "ios_after_dedup": counts["ios_after_dedup"],
+            "ios_duplicates_removed": duplicates_removed,
             "output": output_rows,
         },
         "quality_checks": results,

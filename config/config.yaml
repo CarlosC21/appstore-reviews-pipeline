@@ -5,9 +5,10 @@ paths:
   log_dir: logs
   processed_base: data/processed
   run_records_dir: data/processing_runs
+  catalog_dir: data/catalog
 
 transform:
-  google_app_name: "<real app name from the Kaggle page>"
+  google_app_name: "Google Play App Reviews Dataset"
   partition_columns: [platform, review_year]
 
 settings:
