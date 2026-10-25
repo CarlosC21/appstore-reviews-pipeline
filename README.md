@@ -2,7 +2,8 @@
 
 A data engineering project that ingests app review data from Kaggle, processes it with Spark, and loads it into external tables.
 
-<img width="616" height="179" alt="image" src="https://github.com/user-attachments/assets/9f55c00d-f7a3-4be0-a50f-7919940fad2d" />
+<img width="616" height="179" alt="image" src="<img width="501" height="143" alt="image" src="https://github.com/user-attachments/assets/b722361f-6d35-41f8-9069-cba0f9ab31fc" />
+" />
 
 ## Datasets
 
