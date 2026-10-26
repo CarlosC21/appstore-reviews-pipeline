@@ -43,12 +43,7 @@ TARGET_COLUMNS = [
 # --- Timestamp parsing -------------------------------------------------------------------------
 
 def parse_ts(column: str, fmt: str) -> Column:
-    """Parse a string column to a timestamp. A value that does not match becomes null.
-
-    try_to_timestamp is used because Spark 4 runs in ANSI mode by default, where
-    to_timestamp raises an error on a bad value. We want to count failures instead
-    (see count_parse_failures), so the job decides what to do about them.
-    """
+    """Parse a string column to a timestamp. A value that does not match becomes null."""
     # try_to_timestamp takes its format as a column expression, so the pattern is wrapped in lit()
     return F.try_to_timestamp(F.col(column), F.lit(fmt))
 

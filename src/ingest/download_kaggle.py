@@ -139,7 +139,7 @@ def commit_snapshot(staging_dir: Path, raw_base: Path, dataset_name: str, timest
     if staging_dir.stat().st_dev != destination.parent.stat().st_dev:
         raise RuntimeError("staging_dir and raw_base must be on the same volume for an atomic move")
 
-    # Same-volume rename: observers see no folder or the complete folder, never half
+    # Observers see no folder or the complete folder, never half
     os.replace(staging_dir, destination)
     return destination
 
