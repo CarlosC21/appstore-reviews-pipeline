@@ -2,7 +2,8 @@
 
 A data engineering project that ingests app review data from Kaggle, processes it with Spark, and loads it into external tables.
 
-<img width="616" height="179" alt="image" src="https://github.com/user-attachments/assets/9f55c00d-f7a3-4be0-a50f-7919940fad2d" />
+<img width="501" height="143" alt="image" src="https://github.com/user-attachments/assets/a391b9fb-b3bd-409d-8e1c-d5d4e8f02228" />
+
 
 ## Datasets
 
@@ -35,4 +36,4 @@ python src/transform/spark_job.py
 python src/load/load_tables.py
 ```
 
-Credentials, Java and Windows setup, configuration, and troubleshooting are in the [Runbook](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Runbook). How each stage works and why it is designed this way is in [Design & Decisions](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Design-Decisions).
+Credentials, Java and Windows setup, configuration, and troubleshooting are in the [Runbook](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Runbook). How each stage works and why it is designed this way is in [Design & Decisions](https://github.com/CarlosC21/appstore-reviews-pipeline/wiki/Design-&-Decisions).
