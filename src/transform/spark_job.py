@@ -313,6 +313,8 @@ def main() -> None:
         sys.exit(1)
     finally:
         if spark is not None:
+            # SPARK UI 
+            # input("Spark UI: http://localhost:4040 - press Enter to exit")
             spark.stop()
 
 

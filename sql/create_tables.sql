@@ -22,13 +22,10 @@ CREATE TABLE IF NOT EXISTS reviews_db.reviews (
     developer_response_ts    TIMESTAMP,
     has_developer_response   BOOLEAN,
     source_snapshot          STRING     COMMENT 'Raw snapshot this row came from',
-    processed_at             TIMESTAMP  COMMENT 'When the Spark job ran',
-    -- Partitioned columns
-    platform                 STRING,
-    review_year              INT
+    processed_at             TIMESTAMP  COMMENT 'When the Spark job ran'
 )
 USING PARQUET
-PARTITIONED BY (platform, review_year)
+PARTITIONED BY (platform STRING, review_year INT)
 LOCATION '{location}'
 COMMENT 'Cleaned app reviews from Google Play and the App Store, one row per review';
 
