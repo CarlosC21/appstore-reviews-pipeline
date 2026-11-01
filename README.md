@@ -27,6 +27,10 @@ A data engineering project that ingests app review data from Kaggle, processes i
 - **External by design.** The table is a definition over files the pipeline owns, and it is validated against the pipeline's own run records.
 - **Traceable.** Every output row records the raw snapshot it came from, and every run leaves a metadata or run record.
 
+## Architecture Diagram
+
+<img width="1858" height="360" alt="image" src="https://github.com/user-attachments/assets/be3716c0-633d-45d7-b350-fbe68f52d8ae" />
+
 ## Run it
 
 ```
